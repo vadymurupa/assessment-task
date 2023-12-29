@@ -2,6 +2,8 @@ import PyPDF2
 import re
 import json
 import os
+from unidecode import unidecode
+
 def extract_text_from_pdf(pdf_path):
     """
         Extracts text from a PDF file.
@@ -89,6 +91,8 @@ def parse_resume(text, links):
        dict: A dictionary containing parsed resume data.
 
     """
+    text = unidecode(text)
+
     resume_data = {}
 
     lines = text.split('\n')
