@@ -1,8 +1,29 @@
-import PyPDF2
-import re
 import json
 import os
+import re
+import logging
+import PyPDF2
 from unidecode import unidecode
+import sys
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def load_config(config_file):
+    """
+    Loads configuration from a JSON file.
+    """
+    try:
+        with open(config_file, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        logging.error(f"Configuration file {config_file} not found.")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        logging.error(f"Error parsing the configuration file {config_file}.")
+        sys.exit(1)
+
+
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -81,15 +102,15 @@ def extract_gpa(text):
 
 def parse_resume(text, links):
     """
-       Parses the resume text and extracts various components.
+    Parses the resume text and extracts various components.
+    Now applies unidecode to each text component for Unicode normalization.
 
-       Args:
-       text (str): The full text of the resume.
-       links (list): A list of hyperlinks extracted from the resume.
+    Args:
+    text (str): The full text of the resume.
+    links (list): A list of hyperlinks extracted from the resume.
 
-       Returns:
-       dict: A dictionary containing parsed resume data.
-
+    Returns:
+    dict: A dictionary containing parsed resume data.
     """
     text = unidecode(text)
 
@@ -97,30 +118,30 @@ def parse_resume(text, links):
 
     lines = text.split('\n')
     resume_data['name'] = ' '.join(lines[:2]).strip()
-
     resume_data['job_title'] = lines[3].strip() if len(lines) > 3 else 'Not found'
     email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
     resume_data['email'] = email_match.group(0) if email_match else 'Not found'
-
     phone_match = re.search(r'(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}', text)
     resume_data['phone'] = phone_match.group(0) if phone_match else 'Not found'
 
-    social_patterns = {
-        'linkedin': r'linkedin\.com/in/[\w-]+',
-        'facebook': r'facebook\.com/[\w-]+',
-        'twitter': r'twitter\.com/[\w-]+'
+    # Refactored social media link extraction
+    social_media = {
+        'linkedin': 'linkedin.com',
+        'facebook': 'facebook.com',
+        'twitter': 'twitter.com'
     }
-    for key, pattern in social_patterns.items():
-        match = re.search(pattern, text)
-        resume_data[key] = match.group(0) if match else 'Not found'
 
+    # Initialize social media links in resume_data
+    for platform in social_media:
+        resume_data[platform] = 'Not found'
+
+    # Extract social media links
     for link in links:
-        if 'linkedin.com' in link and resume_data['linkedin'] == 'Not found':
-            resume_data['linkedin'] = link
-        elif 'facebook.com' in link and resume_data['facebook'] == 'Not found':
-            resume_data['facebook'] = link
-        elif 'twitter.com' in link and resume_data['twitter'] == 'Not found':
-            resume_data['twitter'] = link
+        for platform, url in social_media.items():
+            if url in link and resume_data[platform] == 'Not found':
+                resume_data[platform] = link
+                break  # Stop checking other platforms if a match is found
+
 
     sections = [('EDUCATION', 'SKILLS'), ('SKILLS', 'CERTIFICATIONS'), ('CERTIFICATIONS', 'CAREER OBJECTIVE'), ('WORK EXPERIENCE', 'PROJECTS'), ('PROJECTS', None)]
     for section, next_section in sections:
@@ -168,11 +189,17 @@ def process_all_pdfs(pdf_directory, json_directory):
             parsed_resume = parse_resume(extracted_text, extracted_links)
             save_to_json(parsed_resume, json_path)
 
-pdf_directory = '/home/vadym/Desktop/test/assessment-task/cvs'
+#pdf_directory = '/home/vadym/Desktop/test/assessment-task/cvs'
+#json_directory = '/home/vadym/Desktop/test/assessment-task/cvs/json_cv'
+#os.makedirs(json_directory, exist_ok=True)
+#process_all_pdfs(pdf_directory, json_directory)
 
-json_directory = '/home/vadym/Desktop/test/assessment-task/cvs/json_cv'
+if __name__ == "__main__":
+    config = load_config('config.json')
 
-os.makedirs(json_directory, exist_ok=True)
+    pdf_directory = config['pdf_dir']
+    json_directory = config['json_dir']
 
-process_all_pdfs(pdf_directory, json_directory)
+    os.makedirs(json_directory, exist_ok=True)
+    process_all_pdfs(pdf_directory, json_directory)
 
