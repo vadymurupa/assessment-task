@@ -111,20 +111,16 @@ def calculate_work_experience(text):
     text (str): The text of the work experience section.
 
     Returns:
-    int: Total work experience in years.
+    int: Total work experience in month.
     """
     current_year = datetime.now().year
     experience_years = re.findall(r'\b\d{4}\b', text)
-    total_years = 0
+    total_months = 0
 
     for year in experience_years:
-        total_years += current_year - int(year)
+        total_months += (current_year - int(year)) * 12
 
-    # If there are multiple experiences, this will average the years
-    if experience_years:
-        total_years = total_years // len(experience_years)
-
-    return total_years
+    return total_months
 
 
 
